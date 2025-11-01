@@ -1,0 +1,157 @@
+// ------------------------------
+// Flower Store Prisma Schema
+// ------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------
+// MODELS
+// ------------------------------
+
+model User {
+  user_id     Int       @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password_hash String
+  phone       String?
+  created_at  DateTime  @default(now())
+
+  addresses   Address[]
+  orders      Order[]
+  reviews     Review[]
+}
+
+model Merchant {
+  merchant_id Int       @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password_hash String
+  store_name  String?
+  description String?
+  created_at  DateTime  @default(now())
+
+  products    Product[]
+}
+
+model Category {
+  category_id Int       @id @default(autoincrement())
+  name        String
+  description String?
+
+  products    Product[]
+}
+
+model Product {
+  product_id  Int       @id @default(autoincrement())
+  merchant_id Int
+  category_id Int?
+  name        String
+  description String?
+  price       Decimal    @db.Decimal(10,2)
+  stock       Int        @default(0)
+  image_url   String?
+  status      ProductStatus @default(active)
+  created_at  DateTime   @default(now())
+
+  merchant    Merchant   @relation(fields: [merchant_id], references: [merchant_id], onDelete: Cascade)
+  category    Category?  @relation(fields: [category_id], references: [category_id])
+  orderItems  OrderItem[]
+  reviews     Review[]
+}
+
+model Address {
+  address_id  Int      @id @default(autoincrement())
+  user_id     Int
+  street      String?
+  city        String?
+  state       String?
+  country     String?
+  zip_code    String?
+  is_default  Boolean  @default(false)
+
+  user        User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model Order {
+  order_id      Int       @id @default(autoincrement())
+  user_id       Int
+  total_amount  Decimal    @db.Decimal(10,2)
+  payment_status PaymentStatus @default(pending)
+  order_status  OrderStatus  @default(pending)
+  created_at    DateTime   @default(now())
+
+  user          User       @relation(fields: [user_id], references: [user_id])
+  items         OrderItem[]
+  payment       Payment?
+}
+
+model OrderItem {
+  order_item_id Int       @id @default(autoincrement())
+  order_id      Int
+  product_id    Int
+  quantity      Int        @default(1)
+  price         Decimal    @db.Decimal(10,2)
+
+  order         Order      @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+  product       Product    @relation(fields: [product_id], references: [product_id])
+}
+
+model Payment {
+  payment_id     Int       @id @default(autoincrement())
+  order_id       Int        @unique
+  method         PaymentMethod @default(card)
+  transaction_id String?
+  amount         Decimal   @db.Decimal(10,2)
+  status         PaymentStatus @default(pending)
+  created_at     DateTime  @default(now())
+
+  order          Order     @relation(fields: [order_id], references: [order_id], onDelete: Cascade)
+}
+
+model Review {
+  review_id   Int       @id @default(autoincrement())
+  product_id  Int
+  user_id     Int
+  rating      Int
+  comment     String?
+  created_at  DateTime  @default(now())
+
+  product     Product   @relation(fields: [product_id], references: [product_id], onDelete: Cascade)
+  user        User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// ------------------------------
+// ENUMS
+// ------------------------------
+
+enum ProductStatus {
+  active
+  inactive
+}
+
+enum PaymentMethod {
+  card
+  paypal
+  cod
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
+}
+
+enum OrderStatus {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
+}
